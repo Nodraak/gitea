@@ -27,16 +27,9 @@ var (
 		Name:  "secret",
 		Usage: "Generate a secret token",
 		Subcommands: []cli.Command{
-			microcmdGenerateInternalToken,
 			microcmdGenerateLfsJwtSecret,
 			microcmdGenerateSecretKey,
 		},
-	}
-
-	microcmdGenerateInternalToken = cli.Command{
-		Name:   "INTERNAL_TOKEN",
-		Usage:  "Generate a new INTERNAL_TOKEN",
-		Action: runGenerateInternalToken,
 	}
 
 	microcmdGenerateLfsJwtSecret = cli.Command{
@@ -51,16 +44,6 @@ var (
 		Action: runGenerateSecretKey,
 	}
 )
-
-func runGenerateInternalToken(c *cli.Context) error {
-	internalToken, err := generate.NewInternalToken()
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("%s\n", internalToken)
-	return nil
-}
 
 func runGenerateLfsJwtSecret(c *cli.Context) error {
 	JWTSecretBase64, err := generate.NewLfsJwtSecret()

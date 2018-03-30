@@ -5,21 +5,12 @@
 package private
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
 
 	"code.gitea.io/gitea/models"
-	"code.gitea.io/gitea/modules/httplib"
-	"code.gitea.io/gitea/modules/setting"
 )
-
-func newRequest(url, method string) *httplib.Request {
-	return httplib.NewRequest(url, method).Header("Authorization",
-		fmt.Sprintf("Bearer %s", setting.InternalToken))
-}
 
 // Response internal request response
 type Response struct {
@@ -33,20 +24,6 @@ func decodeJSONError(resp *http.Response) *Response {
 		res.Err = err.Error()
 	}
 	return &res
-}
-
-func newInternalRequest(url, method string) *httplib.Request {
-	req := newRequest(url, method).SetTLSClientConfig(&tls.Config{
-		InsecureSkipVerify: true,
-	})
-	if setting.Protocol == setting.UnixSocket {
-		req.SetTransport(&http.Transport{
-			Dial: func(_, _ string) (net.Conn, error) {
-				return net.Dial("unix", setting.HTTPAddr)
-			},
-		})
-	}
-	return req
 }
 
 // UpdatePublicKeyUpdated update publick key updates

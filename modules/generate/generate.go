@@ -10,9 +10,6 @@ import (
 	"encoding/base64"
 	"io"
 	"math/big"
-	"time"
-
-	"github.com/dgrijalva/jwt-go"
 )
 
 // GetRandomString generate random string by specify chars.
@@ -32,29 +29,6 @@ func GetRandomString(n int) (string, error) {
 	}
 
 	return string(buffer), nil
-}
-
-// NewInternalToken generate a new value intended to be used by INTERNAL_TOKEN.
-func NewInternalToken() (string, error) {
-	secretBytes := make([]byte, 32)
-	_, err := io.ReadFull(rand.Reader, secretBytes)
-	if err != nil {
-		return "", err
-	}
-
-	secretKey := base64.RawURLEncoding.EncodeToString(secretBytes)
-
-	now := time.Now()
-
-	var internalToken string
-	internalToken, err = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"nbf": now.Unix(),
-	}).SignedString([]byte(secretKey))
-	if err != nil {
-		return "", err
-	}
-
-	return internalToken, nil
 }
 
 // NewLfsJwtSecret generate a new value intended to be used by LFS_JWT_SECRET.
