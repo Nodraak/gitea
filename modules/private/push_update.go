@@ -5,35 +5,29 @@
 package private
 
 import (
-	"encoding/json"
 	"fmt"
+	"strings"
 
+	"code.gitea.io/git"
 	"code.gitea.io/gitea/models"
-	"code.gitea.io/gitea/modules/log"
-	"code.gitea.io/gitea/modules/setting"
 )
 
 // PushUpdate update publick key updates
 func PushUpdate(opt models.PushUpdateOptions) error {
-	// Ask for running deliver hook and test pull request tasks.
-	reqURL := setting.LocalURL + "api/internal/push/update"
-	log.GitLogger.Trace("PushUpdate: %s", reqURL)
+	errMessageFormat := "PushUpdate: failed to update public key: %s"
 
-	body, err := json.Marshal(&opt)
-	if err != nil {
-		return err
+	branch := strings.TrimPrefix(opt.RefFullName, git.BranchPrefix)
+	if len(branch) == 0 || opt.PusherID <= 0 {
+		return fmt.Errorf(errMessageFormat, "branch or secret is empty, or pusher ID is not valid")
 	}
 
-	resp, err := newInternalRequest(reqURL, "POST").Body(body).Response()
+	err := models.PushUpdate(branch, opt)
 	if err != nil {
-		return err
-	}
-
-	defer resp.Body.Close()
-
-	// All 2XX status codes are accepted and others will return an error
-	if resp.StatusCode/100 != 2 {
-		return fmt.Errorf("Failed to update public key: %s", decodeJSONError(resp).Err)
+		if models.IsErrUserNotExist(err) {
+			return fmt.Errorf(errMessageFormat, "user does not exist")
+		} else {
+			return fmt.Errorf(errMessageFormat, err.Error())
+		}
 	}
 
 	return nil

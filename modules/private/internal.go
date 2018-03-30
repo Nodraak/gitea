@@ -11,8 +11,8 @@ import (
 	"net"
 	"net/http"
 
+	"code.gitea.io/gitea/models"
 	"code.gitea.io/gitea/modules/httplib"
-	"code.gitea.io/gitea/modules/log"
 	"code.gitea.io/gitea/modules/setting"
 )
 
@@ -51,20 +51,9 @@ func newInternalRequest(url, method string) *httplib.Request {
 
 // UpdatePublicKeyUpdated update publick key updates
 func UpdatePublicKeyUpdated(keyID int64) error {
-	// Ask for running deliver hook and test pull request tasks.
-	reqURL := setting.LocalURL + fmt.Sprintf("api/internal/ssh/%d/update", keyID)
-	log.GitLogger.Trace("UpdatePublicKeyUpdated: %s", reqURL)
-
-	resp, err := newInternalRequest(reqURL, "POST").Response()
-	if err != nil {
-		return err
+	if err := models.UpdatePublicKeyUpdated(keyID); err != nil {
+		return fmt.Errorf("Failed to update public key: %s", err.Error())
 	}
 
-	defer resp.Body.Close()
-
-	// All 2XX status codes are accepted and others will return an error
-	if resp.StatusCode/100 != 2 {
-		return fmt.Errorf("Failed to update public key: %s", decodeJSONError(resp).Err)
-	}
 	return nil
 }

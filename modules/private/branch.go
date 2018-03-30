@@ -5,62 +5,34 @@
 package private
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"code.gitea.io/gitea/models"
-	"code.gitea.io/gitea/modules/log"
-	"code.gitea.io/gitea/modules/setting"
 )
 
 // GetProtectedBranchBy get protected branch information
 func GetProtectedBranchBy(repoID int64, branchName string) (*models.ProtectedBranch, error) {
-	// Ask for running deliver hook and test pull request tasks.
-	reqURL := setting.LocalURL + fmt.Sprintf("api/internal/branch/%d/%s", repoID, branchName)
-	log.GitLogger.Trace("GetProtectedBranchBy: %s", reqURL)
-
-	resp, err := newInternalRequest(reqURL, "GET").Response()
+	protectBranch, err := models.GetProtectedBranchBy(repoID, branchName)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GetProtectedBranchBy: failed to get protected branch: %s", err.Error())
 	}
 
-	var branch models.ProtectedBranch
-	if err := json.NewDecoder(resp.Body).Decode(&branch); err != nil {
-		return nil, err
+	if protectBranch == nil {
+		protectBranch = &models.ProtectedBranch{ID: 0}
 	}
-
-	defer resp.Body.Close()
-
-	// All 2XX status codes are accepted and others will return an error
-	if resp.StatusCode/100 != 2 {
-		return nil, fmt.Errorf("Failed to update public key: %s", decodeJSONError(resp).Err)
-	}
-
-	return &branch, nil
+	return protectBranch, nil
 }
 
 // CanUserPush returns if user can push
 func CanUserPush(protectedBranchID, userID int64) (bool, error) {
-	// Ask for running deliver hook and test pull request tasks.
-	reqURL := setting.LocalURL + fmt.Sprintf("api/internal/protectedbranch/%d/%d", protectedBranchID, userID)
-	log.GitLogger.Trace("CanUserPush: %s", reqURL)
+	pbID := protectedBranchID
 
-	resp, err := newInternalRequest(reqURL, "GET").Response()
+	protectBranch, err := models.GetProtectedBranchByID(pbID)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("CanUserPush: failed to retrieve push user: %s", err.Error())
+	} else if protectBranch != nil {
+		return protectBranch.CanUserPush(userID), nil
+	} else {
+		return false, nil
 	}
-
-	var canPush = make(map[string]interface{})
-	if err := json.NewDecoder(resp.Body).Decode(&canPush); err != nil {
-		return false, err
-	}
-
-	defer resp.Body.Close()
-
-	// All 2XX status codes are accepted and others will return an error
-	if resp.StatusCode/100 != 2 {
-		return false, fmt.Errorf("Failed to retrieve push user: %s", decodeJSONError(resp).Err)
-	}
-
-	return canPush["can_push"].(bool), nil
 }
